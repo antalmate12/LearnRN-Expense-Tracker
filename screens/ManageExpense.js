@@ -1,12 +1,17 @@
-import { View, Text, StyleSheet, Alert } from 'react-native';
-import { useContext, useLayoutEffect } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
+import { useContext, useLayoutEffect, useState } from 'react';
 import IconButton from '../components/IconButton';
 import { GlobalStyles } from '../constants/styles';
-import CustomButton from '../components/Button';
 import { ExpensesContext } from '../store/expenses-context';
 import ExpenseForm from '../components/ManageExpense/ExpenseForm';
+import { deleteExpense, storeExpense, updateExpense } from '../utils/http';
+import LoadingOverlay from '../components/LoadingOverlay';
+import ErrorOverlay from '../components/ErrorOverlay';
 
 export default function ManageExpense({ route, navigation }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState();
+
   const expensesCtx = useContext(ExpensesContext);
 
   const expenseId = route.params?.expenseId;
@@ -30,9 +35,18 @@ export default function ManageExpense({ route, navigation }) {
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => {
-          expensesCtx.deleteExpense(expenseId);
-          navigation.goBack();
+        onPress: async () => {
+          setIsLoading(true);
+
+          try {
+            await deleteExpense(expenseId);
+            expensesCtx.deleteExpense(expenseId);
+            navigation.goBack();
+          } catch (err) {
+            setError(err.message);
+          }
+
+          setIsLoading(false);
         },
       },
     ]);
@@ -42,14 +56,43 @@ export default function ManageExpense({ route, navigation }) {
     navigation.goBack();
   }
 
-  function confirmHandler(expenseData) {
+  async function confirmHandler(expenseData) {
     if (isEditing) {
       expensesCtx.updateExpense(expenseId, expenseData);
-    } else {
-      expensesCtx.addExpense(expenseData);
-    }
+      setIsLoading(true);
 
-    navigation.goBack();
+      try {
+        await updateExpense(expenseId, expenseData);
+        navigation.goBack();
+      } catch (err) {
+        setError(err.message);
+      }
+
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+
+      try {
+        const id = await storeExpense(expenseData);
+        expensesCtx.addExpense({
+          id,
+          ...expenseData,
+        });
+        navigation.goBack();
+      } catch (err) {
+        setError(err.message);
+      }
+
+      setIsLoading(false);
+    }
+  }
+
+  if (isLoading) {
+    return <LoadingOverlay />;
+  }
+
+  if (error && !isLoading) {
+    return <ErrorOverlay message={error} onConfirm={() => setError(null)} />;
   }
 
   return (

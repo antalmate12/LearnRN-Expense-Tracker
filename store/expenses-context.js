@@ -1,41 +1,9 @@
 import { createContext, useReducer } from 'react';
 
-const DUMMY_EXPENSES = [
-  {
-    id: 'e1',
-    description: 'A pair of shoes',
-    amount: 59.99,
-    date: new Date('2023-07-01'),
-  },
-  {
-    id: 'e2',
-    description: 'Groceries',
-    amount: 100.0,
-    date: new Date('2023-10-09'),
-  },
-  {
-    id: 'e3',
-    description: 'A new TV',
-    amount: 799.49,
-    date: new Date('2023-08-12'),
-  },
-  {
-    id: 'e4',
-    description: 'Car insurance',
-    amount: 294.67,
-    date: new Date('2023-09-16'),
-  },
-  {
-    id: 'e5',
-    description: 'A Book',
-    amount: 15.29,
-    date: new Date('2023-10-12'),
-  },
-];
-
 export const ExpensesContext = createContext({
   expenses: [],
   addExpense: ({ description, amount, date }) => {},
+  setExpenses: (expenses) => {},
   updateExpense: (id, { description, amount, date }) => {},
   deleteExpense: (id) => {},
 });
@@ -43,8 +11,9 @@ export const ExpensesContext = createContext({
 function expensesReducer(state, action) {
   switch (action.type) {
     case 'ADD':
-      const id = +new Date().toString() + Math.random().toString();
-      return [{ ...action.payload.expenseData, id }, ...state];
+      return [action.payload, ...state];
+    case 'SET':
+      return action.payload;
     case 'UPDATE':
       const expenseIndex = state.findIndex((expense) => expense.id === action.payload.id);
       const updatableExpense = state[expenseIndex];
@@ -63,10 +32,14 @@ function expensesReducer(state, action) {
 }
 
 export function ExpensesContextProvider(props) {
-  const [expensesState, dispatch] = useReducer(expensesReducer, DUMMY_EXPENSES);
+  const [expensesState, dispatch] = useReducer(expensesReducer, []);
 
   function addExpense(expenseData) {
-    dispatch({ type: 'ADD', payload: { expenseData } });
+    dispatch({ type: 'ADD', payload: expenseData });
+  }
+
+  function setExpenses(expenses) {
+    dispatch({ type: 'SET', payload: expenses.reverse() });
   }
 
   function updateExpense(id, expenseData) {
@@ -80,6 +53,7 @@ export function ExpensesContextProvider(props) {
   const value = {
     expenses: expensesState,
     addExpense,
+    setExpenses,
     updateExpense,
     deleteExpense,
   };
